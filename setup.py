@@ -10,7 +10,7 @@ with open(os.path.join(os.path.dirname(__file__), 'README.md')) as f:
 
 setup(
     name='beets-extrafiles',
-    version='0.0.7',
+    version='0.0.8',
     description=(
         'A plugin for beets that copies additional files and directories '
         'during the import process.'
@@ -25,8 +25,8 @@ setup(
     namespace_packages=['beetsplug'],
     test_suite='tests',
     install_requires=[
-        'beets>=1.4.7',
-        'mediafile~=0.6.0',
+        'beets>=2.2.0',
+        'mediafile==0.13.0',
     ],
     classifiers=[
         'Topic :: Multimedia :: Sound/Audio',
