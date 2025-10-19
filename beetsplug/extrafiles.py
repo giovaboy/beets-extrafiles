@@ -8,6 +8,7 @@ from __future__ import annotations
 import os
 import shutil
 import re
+import fnmatch
 from beets.plugins import BeetsPlugin
 from beets import util
 import beets.library
@@ -76,12 +77,26 @@ class ExtraFilesPlugin(BeetsPlugin):
         return util.bytestring_path(destpath)
 
     def match_category(self, filename):
-        """Determina la categoria del file in base ai pattern."""
+        """Compatibile con vecchie configurazioni (glob + regex miste)."""
         for category, patterns in self.config["patterns"].items():
             for pattern in patterns.as_str_seq():
-                if re.match(pattern, filename):
+                # 1️⃣ Se contiene caratteri glob ma non è regex pura, usa fnmatch
+                if any(ch in pattern for ch in ['*', '?', '[', ']']) and not pattern.startswith('^'):
+                    if fnmatch.fnmatch(filename, pattern):
+                        return category
+    
+                # 2️⃣ Se contiene slash (es: scans/), controlla se il path li contiene
+                elif '/' in pattern and re.search(pattern, filename, re.IGNORECASE):
                     return category
-        return None
+    
+                # 3️⃣ Altrimenti, fallback su regex standard
+                else:
+                    try:
+                        if re.match(pattern, filename, re.IGNORECASE):
+                            return category
+                    except re.error as e:
+                        self._log.error(f"Pattern non valido in '{pattern}' ({category}): {e}")
+    return None
 
     def process_items(self, files, action):
         """Applica l'azione a tutti i file trovati."""
