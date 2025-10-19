@@ -96,7 +96,7 @@ class ExtraFilesPlugin(BeetsPlugin):
                             return category
                     except re.error as e:
                         self._log.error(f"Pattern non valido in '{pattern}' ({category}): {e}")
-    return None
+        return None
 
     def process_items(self, files, action):
         """Applica l'azione a tutti i file trovati."""
