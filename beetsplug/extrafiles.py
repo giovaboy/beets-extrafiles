@@ -78,6 +78,9 @@ class ExtraFilesPlugin(BeetsPlugin):
 
     def match_category(self, filename):
         """Compatibile con vecchie configurazioni (glob + regex miste)."""
+        if isinstance(filename, bytes):
+            filename = filename.decode('utf-8', errors='ignore')
+
         for category, patterns in self.config["patterns"].items():
             for pattern in patterns.as_str_seq():
                 # 1️⃣ Se contiene caratteri glob ma non è regex pura, usa fnmatch
