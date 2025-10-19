@@ -36,20 +36,18 @@ class ExtraFilesPlugin(BeetsPlugin):
         self.process_items(files, action=self._move_file)
 
     def gather_files(self, lib):
-        """Cerca i file extra associati agli album nella libreria."""
         files = []
         for album in lib.albums():
-            album_dir = os.path.dirname(album.item_dir())
+            album_dir = getattr(album, 'path', None)
+            if not album_dir:
+                continue
             for root, _, filenames in os.walk(album_dir):
                 for filename in filenames:
                     relpath = os.path.join(root, filename)
                     category = self.match_category(filename)
                     if not category:
                         continue
-                    try:
-                        meta = album.item_template_fields()
-                    except AttributeError:
-                        meta = dict(album)
+                    meta = dict(album)
                     destpath = self.get_destination(relpath, category, meta)
                     if destpath:
                         files.append((relpath, destpath))
@@ -57,18 +55,18 @@ class ExtraFilesPlugin(BeetsPlugin):
 
     def get_destination(self, relpath, category, meta):
         """Ritorna il path finale del file extra."""
-        # fallback: sostituzioni semplici per $albumpath e $artist/$album
-        albumpath = getattr(meta, 'path', getattr(meta, 'album', 'UnknownAlbum'))
-        
+        albumpath = meta.get('path', meta.get('album', 'UnknownAlbum')) if isinstance(meta, dict) else getattr(meta, 'path', getattr(meta, 'album', 'UnknownAlbum'))
+        albumpath = str(albumpath)
+    
         path = self.config['paths'].get(category)
         if path:
-            # sostituisci $albumpath
+            path = str(path)
             path = path.replace('$albumpath', albumpath)
         else:
             path = albumpath
-    
-        return os.path.join(path, relpath)
-    
+
+        return os.path.join(path, os.path.basename(relpath))
+        
     def match_category(self, filename):
         """Compatibile con vecchie configurazioni (glob + regex miste)."""
         if isinstance(filename, bytes):
@@ -102,7 +100,9 @@ class ExtraFilesPlugin(BeetsPlugin):
     def _move_file(self, source, destination):
         """Sposta fisicamente il file extra."""
         self._log.debug(f"Spostamento file extra: {source} → {destination}")
-        util.mkdirall(destination)
+        dest_dir = os.path.dirname(destination)
+        if dest_dir:
+            util.mkdirall(dest_dir)
         try:
             shutil.move(source, destination)
         except Exception as e:
