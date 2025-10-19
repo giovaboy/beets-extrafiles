@@ -49,8 +49,7 @@ class ExtraFilesPlugin(BeetsPlugin):
                     try:
                         meta = album.item_template_fields()
                     except AttributeError:
-                        from beets import templating
-                        meta = templating.TemplateFunctions().for_item(album)
+                        meta = dict(album)
                     destpath = self.get_destination(relpath, category, meta)
                     if destpath:
                         files.append((relpath, destpath))
