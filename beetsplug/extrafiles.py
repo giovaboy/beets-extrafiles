@@ -24,18 +24,8 @@ class ExtraFilesPlugin(BeetsPlugin):
     def __init__(self):
         super().__init__()
         self.config.add({
-            "patterns": {
-                "booklet": [r"^(?i).*booklet.*\.pdf$"],
-                "log": [r"^(?i).*\.log$"],
-                "cue": [r"^(?i).*\.cue$"],
-                "cover": [r"^(?i).*cover.*\.(jpg|jpeg|png)$"],
-            },
-            "paths": {
-                "booklet": "$albumpath/extra/",
-                "log": "$albumpath/extra/",
-                "cue": "$albumpath/extra/",
-                "cover": "$albumpath/extra/",
-            },
+            "patterns": {},
+            "paths": {},
         })
 
         self.register_listener("cli_exit", self.on_cli_exit)
@@ -56,7 +46,11 @@ class ExtraFilesPlugin(BeetsPlugin):
                     category = self.match_category(filename)
                     if not category:
                         continue
-                    meta = album.item_template_fields()
+                    try:
+                        meta = album.item_template_fields()
+                    except AttributeError:
+                        from beets import templating
+                        meta = templating.TemplateFunctions().for_item(album)
                     destpath = self.get_destination(relpath, category, meta)
                     if destpath:
                         files.append((relpath, destpath))
