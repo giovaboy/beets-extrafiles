@@ -56,19 +56,19 @@ class ExtraFilesPlugin(BeetsPlugin):
         return files
 
     def get_destination(self, relpath, category, meta):
-        """Crea il percorso di destinazione usando le template functions moderne."""
-        try:
-            from beets import templating
-            funcs = templating.DefaultTemplateFunctions().functions()
-        except ImportError:
-            from beets.library import Library
-            funcs = Library()._get_template_functions()
-
-        tmpl = self.config["paths"].get(category).get()
-        desttmpl = beets.library.Template(tmpl, funcs)
-        destpath = desttmpl.substitute(meta)
-        return util.bytestring_path(destpath)
-
+        """Ritorna il path finale del file extra."""
+        # fallback: sostituzioni semplici per $albumpath e $artist/$album
+        albumpath = getattr(meta, 'path', getattr(meta, 'album', 'UnknownAlbum'))
+        
+        path = self.config['paths'].get(category)
+        if path:
+            # sostituisci $albumpath
+            path = path.replace('$albumpath', albumpath)
+        else:
+            path = albumpath
+    
+        return os.path.join(path, relpath)
+    
     def match_category(self, filename):
         """Compatibile con vecchie configurazioni (glob + regex miste)."""
         if isinstance(filename, bytes):
