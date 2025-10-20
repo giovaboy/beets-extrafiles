@@ -1,9 +1,4 @@
 # -*- coding: utf-8 -*-
-# This file is part of beets-extrafiles.
-# https://github.com/giovaboy/beets-extrafiles
-#
-# Licensed under the MIT license.
-
 from __future__ import annotations
 import os
 import shutil
@@ -11,14 +6,13 @@ import re
 import fnmatch
 from beets.plugins import BeetsPlugin
 from beets import util
-import beets.library
-import beets.ui
+from beets.library import Item, Album
 
 
 class ExtraFilesPlugin(BeetsPlugin):
     """
-    Plugin per gestire file aggiuntivi (come booklet, log, cue, ecc.)
-    associati agli album durante l'import in beets.
+    Plugin per gestire file aggiuntivi (booklet, artwork, cue, ecc.)
+    solo sugli album appena importati.
     """
 
     def __init__(self):
@@ -28,26 +22,31 @@ class ExtraFilesPlugin(BeetsPlugin):
             "paths": {},
         })
 
-        self.register_listener("cli_exit", self.on_cli_exit)
+        # Registriamo il listener sull'evento "import_task_files"
+        self.register_listener("import_task_files", self.on_import)
 
-    def on_cli_exit(self, lib):
-        """Quando termina il comando CLI, elabora eventuali extra file."""
-        files = self.gather_files(lib)
+    def on_import(self, session=None, task=None, items=None, albums=None, **kwargs):
+        """Viene chiamato per ogni import task. Processa solo gli album importati."""
+        if not albums:
+            return
+
+        files = self.gather_files(albums)
         self.process_items(files, action=self._move_file)
 
-    def gather_files(self, lib):
-        """Cerca i file extra associati agli album nella libreria."""
+    def gather_files(self, albums):
         files = []
-        for album in lib.albums():
+        for album in albums:
             album_dir = getattr(album, 'path', None)
             if not album_dir:
                 continue
+
             for root, _, filenames in os.walk(album_dir):
                 for filename in filenames:
                     relpath = os.path.join(root, filename)
                     category = self.match_category(filename)
                     if not category:
                         continue
+
                     meta = dict(album)
                     destpath = self.get_destination(relpath, category, meta)
                     if destpath:
@@ -55,24 +54,16 @@ class ExtraFilesPlugin(BeetsPlugin):
         return files
 
     def get_destination(self, relpath, category, meta):
-        """Restituisce il path finale del file extra."""
-        # Assicuriamoci che relpath sia stringa
-        if isinstance(relpath, bytes):
-            relpath = relpath.decode('utf-8', errors='ignore')
+        """Ritorna il path finale del file extra."""
+        albumpath = str(meta.get('path', 'UnknownAlbum'))
 
-        albumpath = str(meta.get('path', meta.get('album', 'UnknownAlbum')))
+        path_template = self.config['paths'].get(category)
+        if path_template:
+            path_template = str(path_template).replace('$albumpath', albumpath)
+        else:
+            path_template = albumpath
 
-        # Convertiamo le paths della config in dict di stringhe
-        paths = {k: str(v) for k, v in self.config['paths'].items()}
-        path_template = paths.get(category, '$albumpath')
-        path_template = path_template.replace('$albumpath', albumpath)
-
-        # Assicuriamoci che basename sia stringa
-        basename = os.path.basename(relpath)
-        if isinstance(basename, bytes):
-            basename = basename.decode('utf-8', errors='ignore')
-
-        return os.path.join(path_template, basename)
+        return os.path.join(path_template, os.path.basename(relpath))
 
     def match_category(self, filename):
         """Compatibile con vecchie configurazioni (glob + regex miste)."""
@@ -81,16 +72,16 @@ class ExtraFilesPlugin(BeetsPlugin):
 
         for category, patterns in self.config["patterns"].items():
             for pattern in patterns.as_str_seq():
-                # 1️⃣ Glob semplice
+                # Glob semplice
                 if any(ch in pattern for ch in ['*', '?', '[', ']']) and not pattern.startswith('^'):
                     if fnmatch.fnmatch(filename, pattern):
                         return category
 
-                # 2️⃣ Controllo path con slash
+                # Slash nel pattern → match path
                 elif '/' in pattern and re.search(pattern, filename, re.IGNORECASE):
                     return category
 
-                # 3️⃣ Fallback regex standard
+                # Regex standard
                 else:
                     try:
                         if re.match(pattern, filename, re.IGNORECASE):
@@ -110,6 +101,7 @@ class ExtraFilesPlugin(BeetsPlugin):
         dest_dir = os.path.dirname(destination)
         if dest_dir:
             util.mkdirall(dest_dir)
+
         try:
             shutil.move(source, destination)
         except Exception as e:
