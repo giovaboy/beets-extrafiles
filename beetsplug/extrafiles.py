@@ -11,6 +11,8 @@ import re
 import fnmatch
 from beets.plugins import BeetsPlugin
 from beets import util
+import beets.library
+import beets.ui
 
 
 class ExtraFilesPlugin(BeetsPlugin):
@@ -25,6 +27,7 @@ class ExtraFilesPlugin(BeetsPlugin):
             "patterns": {},
             "paths": {},
         })
+
         self.register_listener("cli_exit", self.on_cli_exit)
 
     def on_cli_exit(self, lib):
@@ -55,8 +58,8 @@ class ExtraFilesPlugin(BeetsPlugin):
         """Restituisce il path finale del file extra."""
         albumpath = str(meta.get('path', meta.get('album', 'UnknownAlbum')))
 
-        # Trasforma ConfigView in dict normale per usare get() con default
-        paths = self.config['paths'].as_str_dict()
+        # converto la subview 'paths' in dict di stringhe
+        paths = {k: str(v) for k, v in self.config['paths'].items()}
         path_template = paths.get(category, '$albumpath')
         path_template = path_template.replace('$albumpath', albumpath)
 
@@ -73,9 +76,11 @@ class ExtraFilesPlugin(BeetsPlugin):
                 if any(ch in pattern for ch in ['*', '?', '[', ']']) and not pattern.startswith('^'):
                     if fnmatch.fnmatch(filename, pattern):
                         return category
-                # 2️⃣ Se contiene slash, controlla se il path li contiene
+
+                # 2️⃣ Se contiene slash (es: scans/), controlla se il path li contiene
                 elif '/' in pattern and re.search(pattern, filename, re.IGNORECASE):
                     return category
+
                 # 3️⃣ Altrimenti, fallback su regex standard
                 else:
                     try:
