@@ -97,11 +97,16 @@ class ExtraFilesPlugin(BeetsPlugin):
 
     def _move_file(self, source, destination):
         """Sposta fisicamente il file extra."""
+        # Converti entrambi in str
+        if isinstance(source, bytes):
+            source = source.decode('utf-8', errors='ignore')
+        if isinstance(destination, bytes):
+            destination = destination.decode('utf-8', errors='ignore')
+    
         self._log.debug(f"Spostamento file extra: {source} → {destination}")
         dest_dir = os.path.dirname(destination)
         if dest_dir:
             util.mkdirall(dest_dir)
-
         try:
             shutil.move(source, destination)
         except Exception as e:
