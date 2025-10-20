@@ -56,14 +56,23 @@ class ExtraFilesPlugin(BeetsPlugin):
 
     def get_destination(self, relpath, category, meta):
         """Restituisce il path finale del file extra."""
+        # Assicuriamoci che relpath sia stringa
+        if isinstance(relpath, bytes):
+            relpath = relpath.decode('utf-8', errors='ignore')
+
         albumpath = str(meta.get('path', meta.get('album', 'UnknownAlbum')))
 
-        # converto la subview 'paths' in dict di stringhe
+        # Convertiamo le paths della config in dict di stringhe
         paths = {k: str(v) for k, v in self.config['paths'].items()}
         path_template = paths.get(category, '$albumpath')
         path_template = path_template.replace('$albumpath', albumpath)
 
-        return os.path.join(path_template, os.path.basename(relpath))
+        # Assicuriamoci che basename sia stringa
+        basename = os.path.basename(relpath)
+        if isinstance(basename, bytes):
+            basename = basename.decode('utf-8', errors='ignore')
+
+        return os.path.join(path_template, basename)
 
     def match_category(self, filename):
         """Compatibile con vecchie configurazioni (glob + regex miste)."""
@@ -72,16 +81,16 @@ class ExtraFilesPlugin(BeetsPlugin):
 
         for category, patterns in self.config["patterns"].items():
             for pattern in patterns.as_str_seq():
-                # 1️⃣ Se contiene caratteri glob ma non è regex pura, usa fnmatch
+                # 1️⃣ Glob semplice
                 if any(ch in pattern for ch in ['*', '?', '[', ']']) and not pattern.startswith('^'):
                     if fnmatch.fnmatch(filename, pattern):
                         return category
 
-                # 2️⃣ Se contiene slash (es: scans/), controlla se il path li contiene
+                # 2️⃣ Controllo path con slash
                 elif '/' in pattern and re.search(pattern, filename, re.IGNORECASE):
                     return category
 
-                # 3️⃣ Altrimenti, fallback su regex standard
+                # 3️⃣ Fallback regex standard
                 else:
                     try:
                         if re.match(pattern, filename, re.IGNORECASE):
