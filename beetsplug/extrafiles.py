@@ -241,7 +241,7 @@ class ExtraFilesPlugin(beets.plugins.BeetsPlugin):
             )
 
         # Get template funcs and evaluate against mapping
-        funcs = beets.library.DefaultTemplateFunctions().functions()
+        funcs = beets.library.models.DefaultTemplateFunctions().functions()
         filepath = path_format.substitute(mapping, funcs) + fileext
 
         # Sanitize filename
