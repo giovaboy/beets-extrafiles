@@ -240,8 +240,9 @@ class ExtraFilesPlugin(beets.plugins.BeetsPlugin):
                 '$albumpath/$filename',
             )
 
-        # Get template funcs and evaluate against mapping
-        funcs = beets.library.models.DefaultTemplateFunctions().functions()
+        # New — use the plugins system to collect all registered template functions,
+        # which is what beets itself does internally when rendering path templates
+        funcs = beets.plugins.template_funcs()
         filepath = path_format.substitute(mapping, funcs) + fileext
 
         # Sanitize filename
