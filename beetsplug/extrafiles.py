@@ -242,7 +242,8 @@ class ExtraFilesPlugin(beets.plugins.BeetsPlugin):
 
         # New — use the plugins system to collect all registered template functions,
         # which is what beets itself does internally when rendering path templates
-        funcs = beets.plugins.template_funcs()
+        #funcs = beets.plugins.template_funcs()
+        funcs = beets.library.models.DefaultTemplateFunctions().functions()
         filepath = path_format.substitute(mapping, funcs) + fileext
 
         # Sanitize filename
