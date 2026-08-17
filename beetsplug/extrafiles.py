@@ -11,8 +11,32 @@ import mediafile
 import beets.dbcore.db
 import beets.library
 import beets.plugins
-import beets.ui
 import beets.util.functemplate
+
+# Query shortcuts historically expanded by beets.ui.get_path_formats().
+# Kept here for compatibility even though extrafiles typically doesn't
+# use these two special config keys.
+PF_KEY_QUERIES = {
+    'comp': 'comp:true',
+    'singleton': 'singleton:true',
+}
+
+
+def get_path_formats(subview):
+    """Build a list of (query, template) pairs from a config subview.
+
+    This replaces beets.ui.get_path_formats(), which was removed from
+    beets.ui in recent beets releases (it used to live in beets/ui/__init__.py
+    but is no longer part of the public/private API surface). The logic
+    below reproduces the original behavior closely enough for plugin use:
+    each key in the subview becomes a query, and each value is compiled
+    into a beets path template.
+    """
+    path_formats = []
+    for query, view in subview.items():
+        query = PF_KEY_QUERIES.get(query, query)
+        path_formats.append((query, beets.util.functemplate.Template(view.as_str())))
+    return path_formats
 
 
 def commonpath(paths):
@@ -79,7 +103,7 @@ class ExtraFilesPlugin(beets.plugins.BeetsPlugin):
         self._moved_items = set()
         self._copied_items = set()
         self._scanned_paths = set()
-        self.path_formats = beets.ui.get_path_formats(self.config['paths'])
+        self.path_formats = get_path_formats(self.config['paths'])
 
         self.register_listener('item_moved', self.on_item_moved)
         self.register_listener('item_copied', self.on_item_copied)
