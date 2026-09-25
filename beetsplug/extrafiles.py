@@ -264,10 +264,11 @@ class ExtraFilesPlugin(beets.plugins.BeetsPlugin):
                 '$albumpath/$filename',
             )
 
-        # New — use the plugins system to collect all registered template functions,
-        # which is what beets itself does internally when rendering path templates
-        #funcs = beets.plugins.template_funcs()
-        funcs = beets.library.models.DefaultTemplateFunctions().functions()
+        # DefaultTemplateFunctions now requires (item, lib) in its constructor.
+        # Passing None for both is safe here: every function we use for extra
+        # file paths (%upper, %lower, %if, %asciify, etc.) ignores item/lib;
+        # only %aunique needs them, and it isn't relevant for extra files.
+        funcs = beets.library.models.DefaultTemplateFunctions(None, None).functions()
         filepath = path_format.substitute(mapping, funcs) + fileext
 
         # Sanitize filename
